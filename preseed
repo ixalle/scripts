@@ -1,0 +1,116 @@
+<%#
+kind: ptable
+name: Preseed
+oses:
+- Debian 6.0
+- Debian 7.0
+- Debian 8.0
+- Ubuntu 12.04
+- Ubuntu 14.04
+%>
+<% if @host.params['install-disk'] -%>
+d-i partman-auto/disk string <%= @host.params['install-disk'] %>
+<% end -%>
+
+<% if @host.params['partitioning-method'] -%>
+d-i partman-auto/method string <%= @host.params['partitioning-method'] %>
+<% else -%>
+d-i partman-auto/method string regular
+<% end -%>
+
+d-i partman-lvm/device_remove_lvm boolean true
+d-i partman-md/device_remove_md boolean true
+d-i partman-lvm/confirm boolean true
+d-i partman-lvm/confirm_nooverwrite boolean true
+
+<% if @host.params['partitioning-method'] && @host.params['partitioning-method'] == 'lvm' -%>
+d-i partman-auto-lvm/guided_size string max
+d-i partman-auto-lvm/new_vg_name string vg_00
+<% end -%>
+
+<% if @host.params['partitioning-filesystem'] -%>
+d-i partman/default_filesystem string <%= @host.params['partitioning-filesystem'] %>
+<% end %>
+
+<% if @host.params['partitioning-recipe'] && @host.params['partitioning-recipe'] == 'expert' -%>
+# Expert recipe
+# Minimum space required > 20Go
+d-i partman-auto/expert_recipe string \
+  boot-root :: \
+    1 1 1 free \
+      $iflabel{ gpt } \
+      $reusemethod{ } \
+      method{ biosgrub } \
+    . \
+    512 512 512 ext2 \
+      $primary{ } \
+      $bootable{ } \
+      $defaultignore{ } \
+      method{ format } \
+      format{ } \
+      filesystem{ ext2 } use_filesystem{ } \
+      mountpoint{ /boot } \
+    . \
+    2147 800 2147 ext4 \
+      $lvmok{ } \
+      lvm_name { root } \
+      method{ format } \
+      format{ } \
+      filesystem{ ext4 } use_filesystem{ } \
+      mountpoint{ / } \
+    . \
+    100% 512 100% linux-swap \
+      $lvmok{ } \
+      reusemethod{ } \
+      method{ swap } \
+      format{ } \
+    . \
+    8590 3000 8590 ext4 \
+      $lvmok{ } \
+      lvm_name { usr } \
+      method{ format } \
+      format{ } \
+      filesystem{ ext4 } use_filesystem{ } \
+      mountpoint{ /usr } \
+    . \
+    8590 3000 8590 ext4 \
+      $lvmok{ } \
+      lvm_name { var } \
+      method{ format } \
+      format{ } \
+      filesystem{ ext4 } use_filesystem{ } \
+      mountpoint{ /var } \
+    . \
+    1074 3000 1074 ext4 \
+      $lvmok{ } \
+      lvm_name { tmp } \
+      method{ format } \
+      format{ } \
+      filesystem{ ext4 } use_filesystem{ } \
+      mountpoint{ /tmp } \
+    . \
+    8590 3000 8590 ext4 \
+      $lvmok{ } \
+      lvm_name { home } \
+      method{ format } \
+      format{ } \
+      filesystem{ ext4 } use_filesystem{ } \
+      mountpoint{ /home } \
+    . \
+    1024 10000 -1 ext4 \
+      $lvmok{ } \
+      lvm_name { free } \
+      method{ format } \
+      format{ } \
+      filesystem{ ext4 } use_filesystem{ } \
+      mountpoint{ /free } \
+    .
+<% elsif @host.params['partitioning-recipe'] -%>
+d-i partman-auto/choose_recipe select <%= @host.params['partitioning-recipe'] %>
+<% else -%>
+d-i partman-auto/choose_recipe select atomic
+<% end %>
+d-i partman/confirm_write_new_label boolean true
+d-i partman/choose_partition select finish
+d-i partman/confirm boolean true
+d-i partman/confirm_nooverwrite boolean true
